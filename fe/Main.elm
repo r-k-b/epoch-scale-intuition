@@ -140,7 +140,7 @@ timeScales =
 references : List { time : Time.Posix, label : String }
 references =
     [ { time = Time.millisToPosix 0, label = "1970" }
-    , { time = Time.millisToPosix 1000000000000, label = "?? 2001" }
+    , { time = Time.millisToPosix 1000000000000, label = "Sept 2001" }
     , { time = Time.millisToPosix 1500000000000, label = "Mid 2017" }
     , { time = Time.millisToPosix 1600000000000, label = "Sept 2020" }
     , { time = Time.millisToPosix 1700000000000, label = "Nov 2023" }
