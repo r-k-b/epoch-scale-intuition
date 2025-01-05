@@ -42,6 +42,7 @@ type alias Flags =
 
 type alias Model =
     { epoch : Time.Posix
+    , momentsAgo : Time.Posix
     , zone : Time.Zone
     , zoneName : String
     }
@@ -62,6 +63,7 @@ init flags =
                 |> Dict.get flags.localZone
                 |> ME.unwrap Time.utc (\zone -> zone ())
       , zoneName = flags.localZone
+      , momentsAgo = Time.millisToPosix flags.posixMillis
       }
     , Cmd.batch
         [ Task.perform AdjustTimeZone Time.here
@@ -167,7 +169,7 @@ view model =
         :: List.concat
             [ viewTimestampControls model
             , viewCurrentDate model
-            , viewReferences
+            , viewReferences model
             ]
         |> H.div []
 
@@ -317,8 +319,8 @@ padInt2 i =
     String.padLeft 2 '0' (String.fromInt i)
 
 
-viewReferences : List (Html Msg)
-viewReferences =
+viewReferences : Model -> List (Html Msg)
+viewReferences { momentsAgo } =
     [ H.h3 [] [ H.text "Reference Timestamps:" ]
     , H.div []
         (List.map
@@ -332,7 +334,7 @@ viewReferences =
                     , H.code [] [ H.text (ref.time |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt) ]
                     ]
             )
-            references
+            ({ time = momentsAgo, label = "Moments ago" } :: references)
         )
     ]
 
