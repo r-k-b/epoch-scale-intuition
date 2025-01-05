@@ -26,10 +26,12 @@ main =
             \model ->
                 { title = "Epoch Scale Intuition", body = [ view model ] }
         , subscriptions = \_ -> Sub.none
-
-        --, onUrlChange = Debug.todo ""
-        --, onUrlRequest = Debug.todo ""
         }
+
+
+totalDigits : Int
+totalDigits =
+    10
 
 
 type alias Flags =
@@ -41,14 +43,14 @@ type alias Flags =
 type alias Model =
     { epoch : Time.Posix
     , zone : Time.Zone
+    , zoneName : String
     }
 
 
 type alias TimeScale =
     { name : String
     , seconds : Int
-    , digits : Float
-    , color : String
+    , log10 : Float
     }
 
 
@@ -59,6 +61,7 @@ init flags =
             TimeZone.zones
                 |> Dict.get flags.localZone
                 |> ME.unwrap Time.utc (\zone -> zone ())
+      , zoneName = flags.localZone
       }
     , Cmd.batch
         [ Task.perform AdjustTimeZone Time.here
@@ -124,11 +127,24 @@ update msg model =
 
 timeScales : List TimeScale
 timeScales =
-    [ { name = "minute", seconds = 60, digits = logBase 10 60, color = "rgba(74, 222, 128, 0.5)" }
-    , { name = "hour", seconds = 3600, digits = logBase 10 3600, color = "rgba(34, 211, 238, 0.5)" }
-    , { name = "day", seconds = 86400, digits = logBase 10 86400, color = "rgba(168, 85, 247, 0.5)" }
-    , { name = "month", seconds = 2628000, digits = logBase 10 2628000, color = "rgba(248, 113, 113, 0.5)" }
-    , { name = "year", seconds = 31536000, digits = logBase 10 31536000, color = "rgba(251, 191, 36, 0.5)" }
+    let
+        asSeconds : Int -> String -> TimeScale
+        asSeconds s name =
+            { name = name, seconds = s, log10 = logBase 10 (toFloat s) * 10 }
+    in
+    [ "1 s" |> asSeconds 1
+    , "10 seconds" |> asSeconds 10
+    , "1 minute" |> asSeconds 60
+    , "1 fika" |> asSeconds (60 * 15)
+    , "1,000 seconds" |> asSeconds 1000
+    , "1 hour" |> asSeconds 3600
+    , "1 day" |> asSeconds 86400
+    , "1 million seconds" |> asSeconds 1000000
+    , "1 month" |> asSeconds 2628000
+    , "1 year" |> asSeconds 31536000
+    , "1 decade" |> asSeconds 315360000
+    , "1 billion seconds" |> asSeconds 1000000000
+    , "80 years" |> asSeconds (31536000 * 80)
     ]
 
 
@@ -139,8 +155,9 @@ references =
     , { time = Time.millisToPosix 1500000000000, label = "Mid 2017" }
     , { time = Time.millisToPosix 1600000000000, label = "Sept 2020" }
     , { time = Time.millisToPosix 1700000000000, label = "Nov 2023" }
-    , { time = Time.millisToPosix 1800000000000, label = "???" }
-    , { time = Time.millisToPosix 1900000000000, label = "??" }
+    , { time = Time.millisToPosix 1800000000000, label = "Jan 2027" }
+    , { time = Time.millisToPosix 1900000000000, label = "March 2030" }
+    , { time = Time.millisToPosix (1000 * (2 ^ 31 - 1)), label = "2038 💥" }
     ]
 
 
@@ -150,7 +167,6 @@ view model =
         :: List.concat
             [ viewTimestampControls model
             , viewCurrentDate model
-            , viewTimeScaleLegend
             , viewReferences
             ]
         |> H.div []
@@ -160,45 +176,62 @@ viewTimestampControls : Model -> List (Html Msg)
 viewTimestampControls model =
     let
         timestampStr =
-            String.padLeft 10 '0' (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
+            String.padLeft totalDigits '0' (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
 
-        viewDigitControl : Int -> Char -> Html Msg
+        viewDigitControl : Int -> Char -> List (Html Msg)
         viewDigitControl position digit =
-            H.div []
-                [ H.button
-                    [ HE.onClick (IncrementDigit position)
-                    , HA.type_ "button"
-                    ]
-                    [ H.text "↑" ]
-                , H.span [ HA.class "font-mono H.text-xl w-6 H.text-center" ]
-                    [ H.text (String.fromChar digit) ]
-                , H.button
-                    [ HE.onClick (DecrementDigit position)
-                    , HA.type_ "button"
-                    ]
-                    [ H.text "↓" ]
+            [ H.button
+                [ HE.onClick (IncrementDigit position)
+                , HA.type_ "button"
+                , HA.class "controls__digitUp"
                 ]
+                [ H.text "⮝" ]
+            , H.span
+                [ HA.class "controls__digit"
+                ]
+                [ H.text <|
+                    if position > 0 && (position |> modBy 3) == 0 then
+                        String.fromChar digit ++ ","
+
+                    else
+                        String.fromChar digit
+                ]
+            , H.button
+                [ HE.onClick (DecrementDigit position)
+                , HA.type_ "button"
+                , HA.class "controls__digitDown"
+                ]
+                [ H.text "⮟" ]
+            ]
     in
-    [ H.div []
+    [ H.div [ HA.class "controls__grid" ] <|
         (String.toList timestampStr
             |> List.indexedMap (\i d -> viewDigitControl (9 - i) d)
+            |> List.concat
         )
-    , H.div []
-        (List.map
-            (\scale ->
-                let
-                    width =
-                        ceiling (scale.digits * toFloat 33)
-                in
-                H.div
-                    [ HA.style "width" (String.fromInt width ++ "px")
-                    , HA.style "background-color" scale.color
-                    , HA.style "bottom" (String.fromInt ((List.length timeScales - 1) * 4) ++ "px")
-                    ]
-                    []
-            )
-            timeScales
-        )
+            ++ [ H.div [ HA.class "controls__scales" ]
+                    (List.indexedMap
+                        (\index scale ->
+                            let
+                                width =
+                                    scale.log10 + 5
+                            in
+                            H.div
+                                [ HA.style "width" (String.fromFloat width ++ "%")
+                                , HA.class "controls__scaleBar"
+                                , HA.attribute "position-anchor" ("--controls__scaleBar--index" ++ String.fromInt index)
+                                ]
+                                [ H.div
+                                    [ HA.attribute "anchor-name" ("--controls__scaleBar--index" ++ String.fromInt index)
+                                    , HA.class "controls__scaleBarNeedle"
+                                    ]
+                                    [ H.text "↑" ]
+                                , H.div [ HA.class "controls__scaleBarText" ] [ H.text scale.name ]
+                                ]
+                        )
+                        timeScales
+                    )
+               ]
     , H.input
         [ HA.type_ "range"
         , HA.min "0"
@@ -225,7 +258,7 @@ viewCurrentDate model =
     in
     [ H.h3 [] [ H.text "Current Selection:" ]
     , H.p []
-        [ H.text (formatDate model.epoch model.zone) ]
+        [ H.text (formatDate model) ]
     , H.p []
         [ H.text
             (dateToString parts
@@ -292,21 +325,6 @@ padInt2 i =
     String.padLeft 2 '0' (String.fromInt i)
 
 
-viewTimeScaleLegend : List (Html Msg)
-viewTimeScaleLegend =
-    List.map
-        (\scale ->
-            H.div []
-                [ H.div
-                    [ HA.style "background-color" scale.color
-                    ]
-                    []
-                , H.text scale.name
-                ]
-        )
-        timeScales
-
-
 viewReferences : List (Html Msg)
 viewReferences =
     [ H.h3 [] [ H.text "Reference Timestamps:" ]
@@ -318,6 +336,7 @@ viewReferences =
                     , HA.type_ "button"
                     ]
                     [ H.span [] [ H.text ref.label ]
+                    , H.br [] []
                     , H.code [] [ H.text (ref.time |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt) ]
                     ]
             )
@@ -330,14 +349,14 @@ viewReferences =
 -- HELPERS
 
 
-formatDate : Time.Posix -> Time.Zone -> String
-formatDate time zone =
+formatDate : Model -> String
+formatDate { epoch, zone, zoneName } =
     let
         year =
-            String.fromInt (Time.toYear zone time)
+            String.fromInt (Time.toYear zone epoch)
 
         month =
-            case Time.toMonth zone time of
+            case Time.toMonth zone epoch of
                 Time.Jan ->
                     "January"
 
@@ -375,16 +394,16 @@ formatDate time zone =
                     "December"
 
         day =
-            String.fromInt (Time.toDay zone time)
+            String.fromInt (Time.toDay zone epoch)
 
         hour =
-            String.padLeft 2 '0' (String.fromInt (Time.toHour zone time))
+            String.padLeft 2 '0' (String.fromInt (Time.toHour zone epoch))
 
         minute =
-            String.padLeft 2 '0' (String.fromInt (Time.toMinute zone time))
+            String.padLeft 2 '0' (String.fromInt (Time.toMinute zone epoch))
 
         weekday =
-            case Time.toWeekday zone time of
+            case Time.toWeekday zone epoch of
                 Time.Mon ->
                     "Monday"
 
@@ -406,4 +425,4 @@ formatDate time zone =
                 Time.Sun ->
                     "Sunday"
     in
-    weekday ++ ", " ++ month ++ " " ++ day ++ ", " ++ year ++ " " ++ hour ++ ":" ++ minute
+    weekday ++ ", " ++ month ++ " " ++ day ++ ", " ++ year ++ " " ++ hour ++ ":" ++ minute ++ " (" ++ zoneName ++ ")"
