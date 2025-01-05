@@ -8,8 +8,8 @@ check:
 
 # Use elm-live to get hot reloading.
 live: makedist
-    elm-live ./fe/Main.elm --hot --dir=./dist -- --output=./dist/frontend.js
+    elm-live ./fe/Main.elm --hot --dir=./dist -- --output=./dist/Main.js
 
 # Put files in ./dist, for local dev
 makedist:
-    elm make fe/Main.elm --output dist/frontend.js
+    elm make fe/Main.elm --output dist/Main.js
