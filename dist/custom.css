@@ -1,7 +1,9 @@
 .controls__grid {
+    max-width: none;
+    width: 100%;
     display: grid;
     /* depends on number of digits */
-    grid-template-columns: repeat(10, calc(100% / 10));
+    grid-template-columns: [tenth] repeat(10, calc(100% / 10)) [zeroes];
     grid-template-rows: [upButtons] 1fr [digits] 1fr [downButtons] 1fr [scales] auto;
     align-items: center;
     justify-content: center;
@@ -23,9 +25,9 @@
 
 .controls__scales {
     grid-row: scales;
-    grid-column-start: 0;
+    grid-column-start: tenth;
     /* depends on number of digits */
-    grid-column-end: span 10;
+    grid-column-end: zeroes;
     grid-column-gap: 0.5em;
     grid-row-gap: 0.5em;
     align-self: stretch;

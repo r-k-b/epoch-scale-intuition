@@ -23,7 +23,7 @@ main =
         , update = update
         , view =
             \model ->
-                { title = "Epoch Scale Intuition", body = [ view model ] }
+                { title = "Epoch Scale Intuition", body = view model }
         , subscriptions = \_ -> Sub.none
         }
 
@@ -149,7 +149,7 @@ references =
     ]
 
 
-view : Model -> Html Msg
+view : Model -> List (Html Msg)
 view model =
     H.h1 [] [ H.text "Epoch Scale Explorer" ]
         :: List.concat
@@ -157,7 +157,6 @@ view model =
             , viewCurrentDate model
             , viewReferences model
             ]
-        |> H.div []
 
 
 viewTimestampControls : Model -> List (Html Msg)
@@ -166,18 +165,30 @@ viewTimestampControls model =
         timestampStr =
             String.padLeft totalDigits
                 '0'
-                (model.epoch |> toSeconds)
+                (model.epoch |> Time.posixToMillis |> abs |> String.fromInt |> String.slice 0 -3)
 
-        isNegative : Bool
-        isNegative =
-            (model.epoch |> Time.posixToMillis) < 0
+        unhandledDigits : String
+        unhandledDigits =
+            timestampStr |> String.slice 0 (-1 * totalDigits)
+
+        truncatedTimestampStr : String
+        truncatedTimestampStr =
+            timestampStr |> String.right 10
+
+        negIndicator : String
+        negIndicator =
+            if (model.epoch |> Time.posixToMillis) < 0 then
+                "−"
+
+            else
+                ""
 
         viewDigitControl : Int -> Char -> List (Html Msg)
         viewDigitControl position digit =
             let
                 digitStr =
-                    if {- ((position + 1) == totalDigits) && -} isNegative then
-                        "−" ++ String.fromChar digit
+                    if (position + 1) == totalDigits then
+                        negIndicator ++ unhandledDigits ++ String.fromChar digit
 
                     else
                         String.fromChar digit
@@ -207,7 +218,7 @@ viewTimestampControls model =
             ]
     in
     [ H.div [ HA.class "controls__grid" ] <|
-        (String.toList timestampStr
+        (String.toList truncatedTimestampStr
             |> List.indexedMap (\i d -> viewDigitControl (totalDigits - 1 - i) d)
             |> List.concat
         )
