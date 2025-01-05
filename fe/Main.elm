@@ -65,11 +65,7 @@ init flags =
       , zoneName = flags.localZone
       , momentsAgo = Time.millisToPosix flags.posixMillis
       }
-    , Cmd.batch
-        [ Task.perform AdjustTimeZone Time.here
-
-        --, Task.perform SetCurrentTime Time.now
-        ]
+    , Cmd.none
     )
 
 
@@ -78,21 +74,19 @@ init flags =
 
 
 type Msg
-    = UpdateTimestampSeconds Int
-    | IncrementDigit Int
-    | DecrementDigit Int
-    | SetReference Time.Posix
-    | AdjustTimeZone Time.Zone
-    | SetCurrentTime Time.Posix
+    = UserEnteredNewTimestampSeconds Int
+    | UserClickedIncrementDigit Int
+    | UserClickedDecrementDigit Int
+    | UserClickedReference Time.Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UpdateTimestampSeconds newTimestamp ->
+        UserEnteredNewTimestampSeconds newTimestamp ->
             ( { model | epoch = Time.millisToPosix (1000 * newTimestamp) }, Cmd.none )
 
-        IncrementDigit position ->
+        UserClickedIncrementDigit position ->
             let
                 multiplier =
                     10 ^ (3 + position)
@@ -102,7 +96,7 @@ update msg model =
             in
             ( { model | epoch = Time.millisToPosix newTimestamp }, Cmd.none )
 
-        DecrementDigit position ->
+        UserClickedDecrementDigit position ->
             let
                 multiplier =
                     10 ^ (3 + position)
@@ -112,15 +106,8 @@ update msg model =
             in
             ( { model | epoch = Time.millisToPosix newTimestamp }, Cmd.none )
 
-        SetReference timestamp ->
+        UserClickedReference timestamp ->
             ( { model | epoch = timestamp }, Cmd.none )
-
-        AdjustTimeZone newZone ->
-            ( { model | zone = newZone }, Cmd.none )
-
-        SetCurrentTime _ ->
-            --( { model | currentTime = Time.posixToMillis time // 1000 }, Cmd.none )
-            ( model, Cmd.none )
 
 
 
@@ -183,7 +170,7 @@ viewTimestampControls model =
         viewDigitControl : Int -> Char -> List (Html Msg)
         viewDigitControl position digit =
             [ H.button
-                [ HE.onClick (IncrementDigit position)
+                [ HE.onClick (UserClickedIncrementDigit position)
                 , HA.type_ "button"
                 , HA.class "controls__digitUp"
                 ]
@@ -199,7 +186,7 @@ viewTimestampControls model =
                         String.fromChar digit
                 ]
             , H.button
-                [ HE.onClick (DecrementDigit position)
+                [ HE.onClick (UserClickedDecrementDigit position)
                 , HA.type_ "button"
                 , HA.class "controls__digitDown"
                 ]
@@ -237,7 +224,7 @@ viewTimestampControls model =
     , H.input
         [ HA.type_ "number"
         , HA.value (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
-        , HE.onInput (String.toInt >> Maybe.withDefault 0 >> UpdateTimestampSeconds)
+        , HE.onInput (String.toInt >> Maybe.withDefault 0 >> UserEnteredNewTimestampSeconds)
         ]
         []
     ]
@@ -326,7 +313,7 @@ viewReferences { momentsAgo } =
         (List.map
             (\ref ->
                 H.button
-                    [ HE.onClick (SetReference ref.time)
+                    [ HE.onClick (UserClickedReference ref.time)
                     , HA.type_ "button"
                     ]
                     [ H.span [] [ H.text ref.label ]
