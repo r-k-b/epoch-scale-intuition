@@ -126,13 +126,16 @@ timeScales =
     , "1 fika" |> asSeconds (60 * 15)
     , "1,000 seconds" |> asSeconds 1000
     , "1 hour" |> asSeconds 3600
+    , "2¾ hours" |> asSeconds (3600 * 2.75 |> round)
     , "1 day" |> asSeconds 86400
     , "1 million seconds" |> asSeconds 1000000
     , "1 month" |> asSeconds 2628000
+    , "4 months" |> asSeconds (4 * 2628000)
     , "1 year" |> asSeconds 31536000
+    , "2⅞ years" |> asSeconds (31536000 * 2.8539 |> round)
     , "1 decade" |> asSeconds 315360000
+    , "31¾ years" |> asSeconds (31536000 * 31.71 |> round)
     , "1 billion seconds" |> asSeconds 1000000000
-    , "80 years" |> asSeconds (31536000 * 80)
     ]
 
 
