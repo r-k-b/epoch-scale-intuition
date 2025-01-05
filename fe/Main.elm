@@ -233,14 +233,6 @@ viewTimestampControls model =
                     )
                ]
     , H.input
-        [ HA.type_ "range"
-        , HA.min "0"
-        , HA.max "2000000000"
-        , HA.value (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
-        , HE.onInput (String.toInt >> Maybe.withDefault 0 >> UpdateTimestampSeconds)
-        ]
-        []
-    , H.input
         [ HA.type_ "number"
         , HA.value (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
         , HE.onInput (String.toInt >> Maybe.withDefault 0 >> UpdateTimestampSeconds)
