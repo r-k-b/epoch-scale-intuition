@@ -1,5 +1,6 @@
 .controls__grid {
     display: grid;
+    /* depends on number of digits */
     grid-template-columns: repeat(10, calc(100% / 10));
     grid-template-rows: [upButtons] 1fr [digits] 1fr [downButtons] 1fr [scales] auto;
     align-items: center;
@@ -23,6 +24,7 @@
 .controls__scales {
     grid-row: scales;
     grid-column-start: 0;
+    /* depends on number of digits */
     grid-column-end: span 10;
     grid-column-gap: 0.5em;
     grid-row-gap: 0.5em;

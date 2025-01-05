@@ -7,7 +7,6 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Maybe.Extra as ME
-import Task
 import Time
 import Time.Extra
 import TimeZone
@@ -102,7 +101,7 @@ update msg model =
                     10 ^ (3 + position)
 
                 newTimestamp =
-                    max 0 (Time.posixToMillis model.epoch - multiplier)
+                    Time.posixToMillis model.epoch - multiplier
             in
             ( { model | epoch = Time.millisToPosix newTimestamp }, Cmd.none )
 
@@ -165,10 +164,24 @@ viewTimestampControls : Model -> List (Html Msg)
 viewTimestampControls model =
     let
         timestampStr =
-            String.padLeft totalDigits '0' (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
+            String.padLeft totalDigits
+                '0'
+                (model.epoch |> toSeconds)
+
+        isNegative : Bool
+        isNegative =
+            (model.epoch |> Time.posixToMillis) < 0
 
         viewDigitControl : Int -> Char -> List (Html Msg)
         viewDigitControl position digit =
+            let
+                digitStr =
+                    if {- ((position + 1) == totalDigits) && -} isNegative then
+                        "−" ++ String.fromChar digit
+
+                    else
+                        String.fromChar digit
+            in
             [ H.button
                 [ HE.onClick (UserClickedIncrementDigit position)
                 , HA.type_ "button"
@@ -180,10 +193,10 @@ viewTimestampControls model =
                 ]
                 [ H.text <|
                     if position > 0 && (position |> modBy 3) == 0 then
-                        String.fromChar digit ++ ","
+                        digitStr ++ ","
 
                     else
-                        String.fromChar digit
+                        digitStr
                 ]
             , H.button
                 [ HE.onClick (UserClickedDecrementDigit position)
@@ -195,7 +208,7 @@ viewTimestampControls model =
     in
     [ H.div [ HA.class "controls__grid" ] <|
         (String.toList timestampStr
-            |> List.indexedMap (\i d -> viewDigitControl (9 - i) d)
+            |> List.indexedMap (\i d -> viewDigitControl (totalDigits - 1 - i) d)
             |> List.concat
         )
             ++ [ H.div [ HA.class "controls__scales" ]
@@ -223,7 +236,7 @@ viewTimestampControls model =
                ]
     , H.input
         [ HA.type_ "number"
-        , HA.value (model.epoch |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt)
+        , HA.value (model.epoch |> toSeconds)
         , HE.onInput (String.toInt >> Maybe.withDefault 0 >> UserEnteredNewTimestampSeconds)
         ]
         []
@@ -249,7 +262,7 @@ viewCurrentDate model =
             )
         ]
     , H.p []
-        [ H.text ("Timestamp: " ++ String.fromInt (Time.posixToMillis model.epoch // 1000)) ]
+        [ H.text ("Timestamp: " ++ toSeconds model.epoch) ]
     ]
 
 
@@ -318,7 +331,7 @@ viewReferences { momentsAgo } =
                     ]
                     [ H.span [] [ H.text ref.label ]
                     , H.br [] []
-                    , H.code [] [ H.text (ref.time |> Time.posixToMillis |> (\t -> t // 1000) |> String.fromInt) ]
+                    , H.code [] [ H.text (ref.time |> toSeconds) ]
                     ]
             )
             ({ time = momentsAgo, label = "Moments ago" } :: references)
@@ -328,6 +341,21 @@ viewReferences { momentsAgo } =
 
 
 -- HELPERS
+
+
+{-| Using with String.slice here, because using `millis // 1000` introduces overflow issues around 2³².
+-}
+toSeconds : Time.Posix -> String
+toSeconds posix =
+    let
+        s =
+            posix |> Time.posixToMillis |> String.fromInt |> String.slice 0 -3
+    in
+    if s == "" then
+        "0"
+
+    else
+        s
 
 
 formatDate : Model -> String
